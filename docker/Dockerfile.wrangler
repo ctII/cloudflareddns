@@ -1,0 +1,5 @@
+FROM alpine:3.20.0
+RUN apk add npm
+RUN npm install wrangler -g
+WORKDIR /data
+ENTRYPOINT ["wrangler"]
