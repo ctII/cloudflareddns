@@ -1,12 +1,12 @@
 import { Buffer } from "node:buffer";
-import Cloudflare from 'cloudflare';
 
 interface Env {
+	CLOUDFLARE_API_KEY: string,
+	CLOUDFLARE_DNS_RECORD_ID: string,
+	CLOUDFLARE_DNS_RECORD_NAME: string,
+	CLOUDFLARE_ZONE_ID: string,
 	USERNAME: string,
 	PASSWORD: string,
-	CLOUDFLARE_API_KEY: string,
-	CLOUDFLARE_ID: string,
-	CLOUDFLARE_EMAIL: string,
 }
 
 const encoder = new TextEncoder();
@@ -25,7 +25,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		// Check request is of an obfuscated method
-		if (request.method !== "PUT") {
+		if (request.method !== "PATCH") {
 			console.log(`received non-PUT request: ${request.method}`);
 			return new Response(null, {status: 404});
 		}
@@ -40,21 +40,22 @@ export default {
 		const authorization = request.headers.get("Authorization");
 		if (!authorization) {
 			console.log("Authorization header did not exist");
-			return new Response(null, {status: 404})
+			return new Response(null, {status: 404});
 		}
 
-		const [scheme, encoded] = authorization.split(" ");
-		if (!encoded || scheme !== "Basic") {
-			console.log(`Authorization header existed, but not of basic encoding: ${authorization}`);
-			return new Response(null, {status: 404})
+		if (!authorization.startsWith("Basic ")) {
+			console.log("Authorization header sent, but without a \"Basic \" prefix")
+			return new Response(null, {status: 400});
 		}
 
-		const creds = Buffer.from(encoded, "base64").toString();
+		// Split out the username and password from the base64 encoded Basic auth header
+		const basic = authorization.slice("Basic ".length);
+		const creds = Buffer.from(basic, "base64").toString();
 		const index = creds.indexOf(":");
 		const user = creds.substring(0, index);
 		const pass = creds.substring(index + 1);
 
-		// Check environment for correct credentials
+		// Check environment that correct credentials are defined
 		if (env.USERNAME === undefined) {
 			console.log("USERNAME environment variable not defined");
 			return new Response(null, {status: 500});
@@ -65,35 +66,54 @@ export default {
 		}
 
 		// Check authorization credentials against environment
-		if (!timingSafeEqual(user, env.USERNAME) || !timingSafeEqual(pass, env.PASSWORD)) {
+		const usernameValid = timingSafeEqual(user, env.USERNAME);
+		const passwordValid = timingSafeEqual(pass, env.PASSWORD);
+
+		// Do so after making sure we always constant compare both user and pass
+		if (!usernameValid || !passwordValid) {
 			console.log(`invalid credentials received: u:${user} p:${pass}`);
 			return new Response(null, {status: 401});
 		}
 
-		// Update cloudflare DNS
+		// Get Environment secrets for updating cloudflare DNS
 		if (env.CLOUDFLARE_API_KEY === undefined) {
 			console.log("CLOUDFLARE_API_KEY environment variable not defined");
 			return new Response(null, {status: 500});
 		}
-		if (env.CLOUDFLARE_EMAIL === undefined) {
-			console.log("CLOUDFLARE_EMAIL environment variable not defined");
+		if (env.CLOUDFLARE_DNS_RECORD_ID === undefined) {
+			console.log("CLOUDFLARE_DNS_RECORD_ID environment variable not defined");
 			return new Response(null, {status: 500});
 		}
-		if (env.CLOUDFLARE_ID === undefined) {
-			console.log("CLOUDFLARE_ID environment variable not defined");
+		if (env.CLOUDFLARE_DNS_RECORD_NAME === undefined) {
+			console.log("CLOUDFLARE_DNS_RECORD_NAME environment variable not defined");
+			return new Response(null, {status: 500});
+		}
+		if (env.CLOUDFLARE_ZONE_ID === undefined) {
+			console.log("CLOUDFLARE_ZONE_ID environment variable not defined");
 			return new Response(null, {status: 500});
 		}
 
-		const cloudflare = new Cloudflare({
-			apiKey: env.CLOUDFLARE_API_KEY,
+		// Update cloudflare DNS
+		const dnsUpdateReq = new Request(`https://api.cloudflare.com/client/v4/zones/${env.CLOUDFLARE_ZONE_ID}/dns_records/${env.CLOUDFLARE_DNS_RECORD_ID}`, {
+			method: "PATCH",
+			headers: new Headers({
+				"Content-Type": "application/json",
+				"Authorization": `Bearer ${env.CLOUDFLARE_API_KEY}`,
+			}),
+			body: JSON.stringify({
+				content: "192.192.192.192",
+				name: env.CLOUDFLARE_DNS_RECORD_NAME,
+				type: "A",
+				id: env.CLOUDFLARE_DNS_RECORD_ID,
+			}),
 		});
 
-		const zone = await cloudflare.zones.list().catch(async(err) => {
-			console.log(err)
-		})
+		const dnsUpdate = await fetch(dnsUpdateReq);
+		if (!dnsUpdate.ok) {
+			console.log(`cloudflare api error ${dnsUpdate.status}:${dnsUpdate.body}`);
+			return new Response("error trying to update DNS record on cloudflare", {status: 500});
+		}
 
-		console.log(zone)
-
-		return new Response("nice!", {status: 200});
+		return new Response(null, {status: 200});
 	},
 };
