@@ -43,7 +43,7 @@ export default {
 
 		if (!authorization.startsWith("Basic ")) {
 			console.log("Authorization header sent, but without a \"Basic \" prefix")
-			return new Response(null, {status: 400});
+			return new Response(null, {status: 404});
 		}
 
 		// Split out the username and password from the base64 encoded Basic auth header
