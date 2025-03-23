@@ -3,6 +3,8 @@ import { Buffer } from "node:buffer";
 interface Env {
 	CLOUDFLARE_API_KEY: string,
 	CLOUDFLARE_ZONE_ID: string,
+	CLOUDFLARE_DNS_RECORD_NAME: string,
+	CLOUDFLARE_DNS_RECORD_ID: string,
 	USERNAME: string,
 	PASSWORD: string,
 }
