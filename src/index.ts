@@ -25,8 +25,14 @@ function timingSafeEqual(a: string, b: string): boolean {
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		// Check request is of an obfuscated method
-		if (request.method !== "PATCH") {
-			console.log(`received non-PUT request: ${request.method}`);
+		if (request.method !== "GET") {
+			console.log(`received non-GET request: ${request.method}`);
+			return new Response(null, {status: 404});
+		}
+
+		// Check if it follows dyndns2
+		if (new URL(request.url).pathname !== "/nic/update") {
+			console.log("received invalid pathname");
 			return new Response(null, {status: 404});
 		}
 
@@ -93,6 +99,25 @@ export default {
 			return new Response(null, {status: 500});
 		}
 
+		const { searchParams } = new URL(request.url)
+
+		let hostname = searchParams.get('hostname')
+		if (hostname === null) {
+			console.log("url query didn't include a hostname per dyndns2")
+			return new Response(null, {status: 400});
+		}
+
+		let ip = searchParams.get('myip')
+		if (ip === null) {
+			console.log("url query didn't include a field myip per dyndns2");
+			return new Response(null, {status:400});
+		}
+
+		if (!timingSafeEqual(hostname, env.CLOUDFLARE_DNS_RECORD_NAME)) {
+			console.log("invalid hostname specified to update from requestor");
+			return new Response(null, {status:403});
+		}
+
 		// Update cloudflare DNS
 		const dnsUpdateReq = new Request(`https://api.cloudflare.com/client/v4/zones/${env.CLOUDFLARE_ZONE_ID}/dns_records/${env.CLOUDFLARE_DNS_RECORD_ID}`, {
 			method: "PATCH",
@@ -101,7 +126,7 @@ export default {
 				"Authorization": `Bearer ${env.CLOUDFLARE_API_KEY}`,
 			}),
 			body: JSON.stringify({
-				content: "192.192.192.192",
+				content: ip,
 				name: env.CLOUDFLARE_DNS_RECORD_NAME,
 				type: "A",
 				id: env.CLOUDFLARE_DNS_RECORD_ID,
