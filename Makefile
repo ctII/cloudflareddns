@@ -35,5 +35,5 @@ deploy:
 	#	This will prevent storing the cloudflare oauth secrets in the repository
 
 clean:
-	rm -r .wrangler/ .env node_modules/
-	podman image rm localhost/cloudflareddns/wrangler:latest
+	rm -rf .wrangler/ .env node_modules/
+	podman image rm -i localhost/cloudflareddns/wrangler:latest
