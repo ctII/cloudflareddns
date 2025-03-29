@@ -3,7 +3,6 @@ import { Buffer } from "node:buffer";
 interface Env {
 	CLOUDFLARE_API_KEY: string,
 	CLOUDFLARE_ZONE_ID: string,
-	CLOUDFLARE_DNS_RECORD_NAME: string,
 	CLOUDFLARE_DNS_RECORD_ID: string,
 	USERNAME: string,
 	PASSWORD: string,
@@ -105,10 +104,6 @@ export default {
 			console.log("CLOUDFLARE_DNS_RECORD_ID environment variable not defined");
 			return new Response(null, {status: 500});
 		}
-		if (env.CLOUDFLARE_DNS_RECORD_NAME === undefined) {
-			console.log("CLOUDFLARE_DNS_RECORD_NAME environment variable not defined");
-			return new Response(null, {status: 500});
-		}
 		if (env.CLOUDFLARE_ZONE_ID === undefined) {
 			console.log("CLOUDFLARE_ZONE_ID environment variable not defined");
 			return new Response(null, {status: 500});
@@ -123,15 +118,49 @@ export default {
 		let ip = searchParams.get('myip')
 		if (ip === null) {
 			console.log("url query didn't include a field myip per dyndns2");
-			return new Response(null, {status:400});
+			return new Response(null, {status: 400});
 		}
 
-		if (!timingSafeEqual(hostname, env.CLOUDFLARE_DNS_RECORD_NAME)) {
-			console.log("invalid hostname specified to update from requestor");
-			return new Response(null, {status:403});
+		// Check the environment variable CLOUDFLARE_DNS_RECORD_ID and get its hostname to verify from dyndns2
+		const dnsGetReq = new Request(`https://api.cloudflare.com/client/v4/zones/${env.CLOUDFLARE_ZONE_ID}/dns_records/${env.CLOUDFLARE_DNS_RECORD_ID}`, {
+			method: "GET",
+			headers: new Headers({
+				"Content-Type": "application/json",
+				"Authorization": `Bearer ${env.CLOUDFLARE_API_KEY}`,
+			})
+		});
+
+		const dnsGet = await fetch(dnsGetReq);
+		if (!dnsGet.ok) {
+			console.log(`cloudflare api error ${dnsGet.status}:${dnsGet.body}`);
+			return new Response("", {status: 500});
 		}
 
-		// Update cloudflare DNS
+		interface Response {
+			success: boolean;
+			result: {
+				name: string;
+			};
+		}
+
+		const dnsGetJson: Response = await dnsGet.json();
+
+		if (!dnsGetJson.result) {
+			console.log(`success from cloudflare not true but the http request was ok`);
+			return new Response(null, {status: 500});
+		}
+
+		if (dnsGetJson.result.name === "") {
+			console.log(`content from cloudflare for hostname is empty`);
+			return new Response(null, {status: 500});
+		}
+
+		if (!timingSafeEqual(hostname, dnsGetJson.result.name)) {
+			console.log(`invalid hostname ${hostname} specified to update actual hostname ${dnsGetJson.result.name}`);
+			return new Response(null, {status: 403});
+		}
+
+		// Update cloudflare DNS using details from dyndns2
 		const dnsUpdateReq = new Request(`https://api.cloudflare.com/client/v4/zones/${env.CLOUDFLARE_ZONE_ID}/dns_records/${env.CLOUDFLARE_DNS_RECORD_ID}`, {
 			method: "PATCH",
 			headers: new Headers({
@@ -140,7 +169,7 @@ export default {
 			}),
 			body: JSON.stringify({
 				content: ip,
-				name: env.CLOUDFLARE_DNS_RECORD_NAME,
+				name: dnsGetJson.result.name,
 				type: "A",
 				id: env.CLOUDFLARE_DNS_RECORD_ID,
 			}),
