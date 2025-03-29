@@ -30,36 +30,51 @@ export default {
 			return new Response(null, {status: 404});
 		}
 
+		const url = new URL(request.url)
+
 		// Check if it follows dyndns2
-		if (new URL(request.url).pathname !== "/nic/update") {
+		if (url.pathname !== "/nic/update") {
 			console.log("received invalid pathname");
 			return new Response(null, {status: 404});
 		}
 
 		// Make sure we are using a secure protocol
-		if (new URL(request.url).protocol !== "https:") {
+		if (url.protocol !== "https:") {
 			console.log(`got a request that isn't https: ${new URL(request.url).protocol}`);
 			return new Response(null, {status: 404});
 		}
 
-		// Check if authorization header is valid
-		const authorization = request.headers.get("Authorization");
-		if (!authorization) {
-			console.log("Authorization header did not exist");
-			return new Response(null, {status: 404});
-		}
+		const { searchParams } = new URL(request.url)
 
-		if (!authorization.startsWith("Basic ")) {
-			console.log("Authorization header sent, but without a \"Basic \" prefix")
-			return new Response(null, {status: 404});
-		}
+		let user:string;
+		let pass:string;
 
-		// Split out the username and password from the base64 encoded Basic auth header
-		const basic = authorization.slice("Basic ".length);
-		const creds = Buffer.from(basic, "base64").toString();
-		const index = creds.indexOf(":");
-		const user = creds.substring(0, index);
-		const pass = creds.substring(index + 1);
+		// Check if the username and password exist in the url, if not use the Authorization header
+		let urlUsername = searchParams.get('username')
+		let urlPassword = searchParams.get('password')
+		if (urlUsername !== null && urlPassword !== null) {
+			user = urlUsername
+			pass = urlPassword
+		} else {
+			// Check if authorization header is valid
+			const authorization = request.headers.get("Authorization");
+			if (!authorization) {
+				console.log("Authorization header did not exist");
+				return new Response(null, {status: 404});
+			}
+
+			if (!authorization.startsWith("Basic ")) {
+				console.log("Authorization header sent, but without a \"Basic \" prefix")
+				return new Response(null, {status: 404});
+			}
+
+			// Split out the username and password from the base64 encoded Basic auth header
+			const basic = authorization.slice("Basic ".length);
+			const creds = Buffer.from(basic, "base64").toString();
+			const index = creds.indexOf(":");
+			user = creds.substring(0, index);
+			pass = creds.substring(index + 1);
+		}
 
 		// Check environment that correct credentials are defined
 		if (env.USERNAME === undefined) {
@@ -98,8 +113,6 @@ export default {
 			console.log("CLOUDFLARE_ZONE_ID environment variable not defined");
 			return new Response(null, {status: 500});
 		}
-
-		const { searchParams } = new URL(request.url)
 
 		let hostname = searchParams.get('hostname')
 		if (hostname === null) {
