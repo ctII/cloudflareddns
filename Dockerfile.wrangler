@@ -1,5 +1,5 @@
-FROM alpine:3.21.3
-RUN apk add npm curl
+FROM node:lts-slim
+RUN apt-get update && apt install libatomic1 -y && apt-get clean
 RUN npm install wrangler -g
 WORKDIR /data
 ENTRYPOINT ["wrangler"]
