@@ -21,7 +21,7 @@ Then remove the wrangler secrets, npm files, and podman images
 make clean
 ```
 
-Now you can go and create the dns record in the the Cloudflare dashboard:
+Now you can go and create the dns record in the Cloudflare dashboard:
 
 ```[Dashboard] > [Cloudflare Email]] > [Account Home] > [Domain] > [DNS] > [Records]```
 
