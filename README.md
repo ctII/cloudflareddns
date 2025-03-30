@@ -21,6 +21,18 @@ Then remove the wrangler secrets, npm files, and podman images
 make clean
 ```
 
+Now you can go and create the dns record in the the Cloudflare dashboard:
+
+```[Dashboard] > [Cloudflare Email]] > [Account Home] > [Domain] > [DNS] > [Records]```
+
+Then pull up the audit logs and get the zone_id and id for the dns record (it should be labeled as an "Update" action)
+
+```[Dashboard] > [Cloudflare Email] > [Manage Account] > [Audit Logs]```
+
+Then create an apikey under:
+
+https://dash.cloudflare.com/profile/api-tokens ```> [Create Token] > [Edit zone DNS] > [Use Template] > [Zone Resource] > [Select] > [Domain To Use]```
+
 ## Configuration
 
 ### Secrets
@@ -30,10 +42,10 @@ All these secrets must be defined in the workers secrets
 apikey scoped to the domain that is to be modified
 
 #### ```CLOUDFLARE_ZONE_ID```
-ID of the zone (domain) to be modified (can be found after modifying a record in audit logs)
+zone_id (domain) to be modified (can be found in audit logs)
 
 #### ```CLOUDFLARE_DNS_RECORD_ID```
-ID of the dns record in the CLOUDFLARE_ZONE_ID (can be found after modifying a record in audit logs)
+id of the dns record in the CLOUDFLARE_ZONE_ID (can be found in audit logs)
 
 #### ```USERNAME```
 username for the HTTP Basic Authorization header
