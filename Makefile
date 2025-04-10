@@ -3,7 +3,7 @@ all: build-dockerfile npm-install deploy
 build-dockerfile:
 	podman build -f Dockerfile.wrangler -t localhost/cloudflareddns/wrangler:latest
 
-types: build-dockerfile
+types: build-dockerfile npm-install
 	#	--rm to remove container after it exits
 	#	./:/data for mounting the git repository to the container /data where the Dockerfiles are set to WORKDIR (cd)
 	#	:Z is for relabeling the git repository on SELinux enabled systems to be mountable in the container
