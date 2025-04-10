@@ -30,7 +30,7 @@ deploy:
 	#	./:/data for mounting the git repository to the container /data where the Dockerfiles are set to WORKDIR (cd)
 	#	:Z is for relabeling the git repository on SELinux enabled systems to be mountable in the container
 	#	--pull=never to prevent podman from trying to pull the container image we should have built from a registry
-	podman run -it --rm -v ./.wrangler/config/:/root/.config/.wrangler/config/:Z -v ./:/data:Z --pull=never localhost/cloudflareddns/wrangler:latest deploy
+	podman run -it --rm -v ./.wrangler/config/:/root/.config/.wrangler/config/:Z -v ./:/data:Z --pull=never localhost/cloudflareddns/wrangler:latest deploy --minify
 	#	You can now delete "./.wrangler/config/default.toml" or "make clean" if you do not need to deploy or run other wrangler commands again
 	#	This will prevent storing the cloudflare oauth secrets in the repository
 
