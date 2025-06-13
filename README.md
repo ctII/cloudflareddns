@@ -6,7 +6,7 @@ This is a problem with cloudflare free plans that do not allow you to give an ap
 
 ## Dependancies
 
-### Fedora 41
+### Fedora
 ```sh
 sudo dnf install make podman -y
 ```
