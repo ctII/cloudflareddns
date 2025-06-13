@@ -34,6 +34,13 @@ deploy:
 	#	You can now delete "./.wrangler/config/default.toml" or "make clean" if you do not need to deploy or run other wrangler commands again
 	#	This will prevent storing the cloudflare oauth secrets in the repository
 
-clean:
-	rm -rf .wrangler/ .env node_modules/
+clean-container-images:
 	podman image rm -i localhost/cloudflareddns/wrangler:latest
+
+clean-wrangler:
+	rm -rf .wrangler/ .env
+
+clean-node:
+	rm -rf node_modules/
+
+clean: clean-container-images clean-wrangler clean-node
